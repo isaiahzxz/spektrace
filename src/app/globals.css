@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "spektrace";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+
+  --color-base-100: #f2efea;
+  --color-base-200: #ffffff;
+  --color-base-300: #e6e2d8;
+  --color-base-content: #1c2430;
+  --color-primary: #085af9;
+  --color-primary-content: #ffffff;
+  --color-secondary: #e6e2d8;
+  --color-secondary-content: #1c2430;
+  --color-accent: #0847c4;
+  --color-accent-content: #ffffff;
+  --color-neutral: #ffffff;
+  --color-neutral-content: #1c2430;
+  --color-info: #0847c4;
+  --color-info-content: #ffffff;
+  --color-success: #0f766e;
+  --color-success-content: #ffffff;
+  --color-warning: #854d0e;
+  --color-warning-content: #ffffff;
+  --color-error: #b84322;
+  --color-error-content: #ffffff;
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.375rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "spektrace-dark";
+  default: true;
+  prefersdark: false;
+  color-scheme: dark;
+
+  --color-base-100: #050505;
+  --color-base-200: #111111;
+  --color-base-300: #242424;
+  --color-base-content: #ededed;
+  --color-primary: #ededed;
+  --color-primary-content: #050505;
+  --color-secondary: #283548;
+  --color-secondary-content: #f1f2f6;
+  --color-accent: #e5e5e5;
+  --color-accent-content: #111111;
+  --color-neutral: #0b0f17;
+  --color-neutral-content: #f1f2f6;
+  --color-info: #aeb8fe;
+  --color-info-content: #0b0f17;
+  --color-success: #99f6e4;
+  --color-success-content: #0b0f17;
+  --color-warning: #fde68a;
+  --color-warning-content: #0b0f17;
+  --color-error: #fb7185;
+  --color-error-content: #111922;
+
+  --radius-selector: 0.25rem;
+  --radius-field: 0.375rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+html[data-theme="spektrace"] {
+  --st-bg: #f2efea;
+  --st-sidebar: #ffffff;
+  --st-text: #1c2430;
+  --st-muted: #3e4c5f;
+  --st-code: #f2f4f7;
+  --st-highlight: #0847c4;
+  --st-border: #e6e2d8;
+  --st-series: #0f766e;
+  --st-freq-low: #3e4c5f;
+  --st-freq-medium: #a16207;
+  --st-freq-high: #b84322;
+  --st-hover: rgb(241 245 249 / 0.9);
+  --st-danger: #fc7753;
+  --st-pending-bg: #fef3c7;
+  --st-pending-fg: #713f12;
+  --st-triaged-bg: #ccfbf1;
+  --st-triaged-fg: #115e59;
+  --st-neutral-bg: #eef1f4;
+  --st-neutral-fg: #1c2430;
+  --st-fail-bg: #fde8e2;
+  --st-fail-fg: #9a3412;
+  --st-post-bg: #e7eefe;
+  --st-post-fg: #1e3a8a;
+  --st-get-bg: #d1fae5;
+  --st-get-fg: #065f46;
+  --st-put-bg: #fef3c7;
+  --st-put-fg: #713f12;
+}
+
+html[data-theme="spektrace-dark"] {
+  --st-bg: #050505;
+  --st-sidebar: #050505;
+  --st-text: #ededed;
+  --st-muted: #a3a3a3;
+  --st-code: #0b0b0b;
+  --st-highlight: #e5e5e5;
+  --st-border: #242424;
+  --st-series: #5eead4;
+  --st-freq-low: #b4b9c1;
+  --st-freq-medium: #fbbf24;
+  --st-freq-high: #fc7753;
+  --st-hover: rgb(255 255 255 / 0.04);
+  --st-danger: #fc7753;
+  --st-pending-bg: rgb(253 230 138 / 0.14);
+  --st-pending-fg: #fde68a;
+  --st-triaged-bg: rgb(153 246 228 / 0.12);
+  --st-triaged-fg: #99f6e4;
+  --st-neutral-bg: rgb(148 163 184 / 0.16);
+  --st-neutral-fg: #e2e8f0;
+  --st-fail-bg: rgb(252 119 83 / 0.14);
+  --st-fail-fg: #fc7753;
+  --st-post-bg: rgb(8 90 249 / 0.18);
+  --st-post-fg: #c5d8ff;
+  --st-get-bg: rgb(16 185 129 / 0.16);
+  --st-get-fg: #a7f3d0;
+  --st-put-bg: rgb(253 230 138 / 0.14);
+  --st-put-fg: #fde68a;
+}
+
+@theme inline {
+  --color-st-bg: var(--st-bg);
+  --color-st-sidebar: var(--st-sidebar);
+  --color-st-text: var(--st-text);
+  --color-st-muted: var(--st-muted);
+  --color-st-code: var(--st-code);
+  --color-st-highlight: var(--st-highlight);
+  --color-st-border: var(--st-border);
+  --color-st-danger: var(--st-danger);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+html {
+  scroll-padding-top: 1rem;
+}
+
+body {
+  background: var(--st-bg);
+  color: var(--st-text);
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+[data-theme="spektrace"] .st-panel {
+  box-shadow: 0 1px 2px rgb(28 36 48 / 0.06);
+}
+
+.st-row {
+  transition: background-color 150ms ease;
+}
+
+.st-row:hover {
+  background: var(--st-hover);
+}
+
+.st-selected {
+  background: color-mix(in srgb, var(--color-base-300) 72%, transparent);
+  box-shadow: inset 2px 0 0 0 var(--color-primary);
+}
+
+.st-table :where(thead th) {
+  padding: 0.75rem 1rem;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--st-muted);
+}
+
+.st-table :where(tbody td) {
+  height: 3.75rem;
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
+}
+
+.st-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.st-method {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.25rem;
+}
+
+.st-pending { background: var(--st-pending-bg); color: var(--st-pending-fg); }
+.st-triaged { background: var(--st-triaged-bg); color: var(--st-triaged-fg); }
+.st-neutral { background: var(--st-neutral-bg); color: var(--st-neutral-fg); }
+.st-fail { background: var(--st-fail-bg); color: var(--st-fail-fg); }
+.st-post { background: var(--st-post-bg); color: var(--st-post-fg); }
+.st-get { background: var(--st-get-bg); color: var(--st-get-fg); }
+.st-put { background: var(--st-put-bg); color: var(--st-put-fg); }
+
+summary.st-summary {
+  list-style: none;
+}
+
+summary.st-summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The supplied dashboard reference uses flat black surfaces and fine dividers. */
+.sketch-dashboard .st-panel { border-radius: 6px; box-shadow: none; }
+.sketch-dashboard { --radius-box: 0.375rem; }
+
+.sketch-dashboard a:active, .sketch-dashboard button:active { opacity: 0.78; }

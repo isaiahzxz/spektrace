@@ -1,0 +1,13 @@
+{
+  "name": "@spektrace/express-monitoring",
+  "version": "0.2.0",
+  "description": "Bounded, body-off-by-default Express 4xx monitoring for SpekTrace",
+  "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=20.19.0" },
+  "peerDependencies": { "express": ">=4.21.0 <6" },
+  "scripts": { "build": "tsc -p tsconfig.json", "prepack": "npm run build" }
+}

@@ -1,0 +1,55 @@
+# Sample only — synthetic deployment events; do not connect a real CI/CD pipeline until
+# outbound-data policy and allowlists are explicitly configured.
+name: Record SpekTrace deployment context (synthetic)
+on:
+  workflow_dispatch:
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record deployment started
+        env:
+          SPEKTRACE_BASE_URL: ${{ secrets.SPEKTRACE_BASE_URL }}
+          SPEKTRACE_TOKEN: ${{ secrets.SPEKTRACE_IMPORT_TOKEN }}
+          SPEKTRACE_SERVICE: payments-api
+          SPEKTRACE_ENVIRONMENT: default
+          SPEKTRACE_DEPLOY_INTEGRATION: synthetic-github-actions
+        run: |
+          DEPLOY_ID="synthetic-deploy-${{ github.run_id }}"
+          jq -n \
+            --arg integrationKey "$SPEKTRACE_DEPLOY_INTEGRATION" \
+            --arg sourceDeploymentId "$DEPLOY_ID" \
+            --arg sourceEventId "${DEPLOY_ID}-started" \
+            --arg apiKey "$SPEKTRACE_SERVICE" \
+            --arg environment "$SPEKTRACE_ENVIRONMENT" \
+            --arg repository "synthetic/example-payments" \
+            --arg commitSha "abc1234567890abcdef1234567890abcdef12345678" \
+            --arg artifactRef "payments-api:synthetic-1.2.3" \
+            '{integrationKey:$integrationKey, sourceDeploymentId:$sourceDeploymentId, sourceEventId:$sourceEventId, apiKey:$apiKey, environment:$environment, status:"started", sourceReportedAt:"2026-01-15T10:00:00.000Z", repository:$repository, commitSha:$commitSha, artifactRef:$artifactRef}' \
+            | curl --fail-with-body --silent --show-error \
+                -H "Authorization: Bearer $SPEKTRACE_TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @- \
+                "$SPEKTRACE_BASE_URL/api/internal/deployment-events"
+      - name: Record deployment succeeded
+        env:
+          SPEKTRACE_BASE_URL: ${{ secrets.SPEKTRACE_BASE_URL }}
+          SPEKTRACE_TOKEN: ${{ secrets.SPEKTRACE_IMPORT_TOKEN }}
+          SPEKTRACE_SERVICE: payments-api
+          SPEKTRACE_ENVIRONMENT: default
+          SPEKTRACE_DEPLOY_INTEGRATION: synthetic-github-actions
+        run: |
+          DEPLOY_ID="synthetic-deploy-${{ github.run_id }}"
+          jq -n \
+            --arg integrationKey "$SPEKTRACE_DEPLOY_INTEGRATION" \
+            --arg sourceDeploymentId "$DEPLOY_ID" \
+            --arg sourceEventId "${DEPLOY_ID}-succeeded" \
+            --arg apiKey "$SPEKTRACE_SERVICE" \
+            --arg environment "$SPEKTRACE_ENVIRONMENT" \
+            '{integrationKey:$integrationKey, sourceDeploymentId:$sourceDeploymentId, sourceEventId:$sourceEventId, apiKey:$apiKey, environment:$environment, status:"succeeded", sourceReportedAt:"2026-01-15T10:05:00.000Z"}' \
+            | curl --fail-with-body --silent --show-error \
+                -H "Authorization: Bearer $SPEKTRACE_TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @- \
+                "$SPEKTRACE_BASE_URL/api/internal/deployment-events"

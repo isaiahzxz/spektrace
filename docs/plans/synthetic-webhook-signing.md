@@ -1,0 +1,17 @@
+# Synthetic webhook signing — 2026-10-22
+
+Outcome: a separate opt-in loopback fixture verifies original bytes before JSON parsing and sanitization, resolves the configured sender binding under transaction locks, and commits immutable verification provenance with the existing receipt/outbox transaction. No real provider authentication is claimed.
+
+Security review before implementation: scope/key/event/target binding, proof bound to verified projection, replay window checked after lock waits, key expiry, duplicate identity excluding signature/timestamp, no signed-to-unsigned downgrade, and explicit key-possession disclosure.
+
+Protocol: synthetic-hmac-sha256@1. HMAC-SHA256 over newline-separated protocol, POST, exact fixed signed path, key UUID, workspace UUID, collector credential UUID, principal kind, principal UUID, event UUID, decimal Unix seconds, then newline and original UTF-8 bytes. Signature header v1=<64 lowercase hex>. Each required header exactly once. No query, case aliases, trailing slash, compression, non-UTF8, or bodies over 4096 bytes. Max age 300 seconds, future allowance 30 seconds, configured key expiry required. Random 32-byte keys, distinct ids/secrets, separate from collector token. Config changes require restart; credential/binding revocation is checked live under locks.
+
+Retain only sanitized fixture projection and validated metadata. Never persist raw body, signature, key secret or original-body digest. Retried events dedupe on protected projection plus protocol and mapped sender/binding/principal, even after signing key rotation. Legacy unsigned receipts remain unverified and cannot be upgraded by replaying an event. An exact replay inside the freshness window returns the same receipt, never another job. New collector credentials create a new dedupe namespace.
+
+Verification: independent HMAC test signer; real HTTP/DB cases for tampering, stale/future/expired keys, duplicate headers, scope/binding revocation, fresh retry, immutability, omissions, rollback and validation. Disposable database only; fresh typecheck/lint/build and source-copy bypass control. Founder review must distinguish signing-key possession from provider identity and body validation from business completion.
+
+Status: implemented and verified with synthetic data. Fresh disposable verification: 397 unit tests (46 files), 32 selected integrations (4 files), five webhook unsafe-copy controls including removed signature comparison, plus historical fallback control; production webpack build passed. Typecheck and changed-source lint passed. No original deadlines or assertions weakened. The first duplicate-header test was incorrectly framed without Host/body length; corrected request framing then exercised application rejection.
+
+Browser review: signed receipt displayed key-possession disclosure, sender reference, verification time and independent schema mismatch in Light/Dark desktop and Light 390px. Measured no horizontal overflow at 1440 and 390. Existing tokens/components retained; no new UI controls or color roles.
+
+Local migration installed only the new nullable provenance column. Guarded before/after record comparisons unchanged; zero development receipts and no new credentials/fixtures. App and worker restarted to load generated Prisma. Temporary signed visual review uses its own database and is removed after review. No signing endpoint is started by default, no real provider is connected, and AI/proposals remain disabled.

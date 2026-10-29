@@ -1,0 +1,40 @@
+# Sample only. Copy this into a repository workflow after filling the placeholders.
+# It does not run from this path. Do not put a real token in the file.
+name: Import SpekTrace specification
+on:
+  push:
+    paths:
+      - "${SPEKTRACE_OPENAPI_PATH}"
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import revision without activating it
+        env:
+          SPEKTRACE_BASE_URL: ${SPEKTRACE_BASE_URL}
+          SPEKTRACE_TOKEN: ${SPEKTRACE_IMPORT_TOKEN}
+          SPEKTRACE_SERVICE: ${SPEKTRACE_SERVICE_KEY}
+          SPEKTRACE_ENVIRONMENT: ${SPEKTRACE_ENVIRONMENT}
+          SPEKTRACE_OPENAPI_PATH: ${SPEKTRACE_OPENAPI_PATH}
+        run: |
+          jq -n \
+            --rawfile source "$SPEKTRACE_OPENAPI_PATH" \
+            --arg apiKey "$SPEKTRACE_SERVICE" \
+            --arg environment "$SPEKTRACE_ENVIRONMENT" \
+            --arg sourceFilename "$SPEKTRACE_OPENAPI_PATH" \
+            --arg repository "${GITHUB_REPOSITORY}" \
+            --arg commitSha "${GITHUB_SHA}" \
+            --arg ciRunId "${GITHUB_RUN_ID}" \
+            --arg ciRunUrl "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{apiKey:$apiKey, environment:$environment, sourceFilename:$sourceFilename, sourceText:$source, provenance:{repository:$repository, commitSha:$commitSha, openApiPath:$sourceFilename, ciRunId:$ciRunId, ciRunUrl:$ciRunUrl}}' \
+            | curl --fail-with-body --silent --show-error \
+                -H "Authorization: Bearer $SPEKTRACE_TOKEN" \
+                -H "Content-Type: application/json" \
+                --data-binary @- \
+                "$SPEKTRACE_BASE_URL/api/internal/specs"
+      - name: Activate after a successful deployment
+        if: ${{ false }}
+        run: |
+          echo "Replace the condition with the deployment job, then POST {\"apiSpecId\":\"<imported id>\"} to /api/internal/specs/activate."
+          echo "Do not activate from the import step."

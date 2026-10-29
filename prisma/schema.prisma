@@ -1,0 +1,1131 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum IncidentSource {
+  SENTRY
+  DATADOG
+  CLOUDWATCH
+  WEBHOOK
+
+  @@map("incident_source")
+}
+
+enum IncidentStatus {
+  RECEIVED
+  VALIDATING
+  NEEDS_REVIEW
+  DRAFT_READY
+  APPROVED
+  SENDING
+  SENT
+  FAILED
+
+  @@map("incident_status")
+}
+
+enum ValidationStatus {
+  NOT_RUN
+  PASSED
+  MISMATCH
+  UNSUPPORTED
+  ERROR
+
+  @@map("validation_status")
+}
+
+enum AuditEventType {
+  INTEGRATION_OBSERVATION_RECEIVED
+  INTEGRATION_BASELINE_CREATED
+  INTEGRATION_BASELINE_ACTIVATED
+  INTEGRATION_OUTCOME_RECEIVED
+  INCIDENT_RECEIVED
+  SPEC_REGISTERED
+  SPEC_ACTIVATED
+  VALIDATION_STARTED
+  VALIDATION_COMPLETED
+  VALIDATION_FAILED
+  DRAFT_GENERATED
+  DRAFT_EDITED
+  INCIDENT_APPROVED
+  SEND_SUCCEEDED
+  SEND_FAILED
+  PATTERN_SEVERITY_SET
+  REPOSITORY_SNAPSHOT_IMPORTED
+  DOCUMENTATION_SNAPSHOT_IMPORTED
+  DEPLOYMENT_EVENT_RECORDED
+  HISTORICAL_BINDING_IMPORTED
+  SENDER_BINDING_REGISTERED
+  SENDER_BINDING_REVOKED
+  INGESTION_CREDENTIAL_ISSUED
+  INGESTION_CREDENTIAL_REVOKED
+  INGESTION_CREDENTIAL_ROTATED
+
+  @@map("audit_event_type")
+}
+
+enum DeploymentEventStatus {
+  STARTED
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  ROLLED_BACK
+
+  @@map("deployment_event_status")
+}
+
+enum DocumentationSnapshotImportStatus {
+  COMPLETE
+  PARTIAL
+
+  @@map("documentation_snapshot_import_status")
+}
+
+enum RepositorySnapshotImportStatus {
+  COMPLETE
+  PARTIAL
+
+  @@map("repository_snapshot_import_status")
+}
+
+enum ActorType {
+  SYSTEM
+  HUMAN
+
+  @@map("actor_type")
+}
+
+enum OutboxDispatchStatus {
+  PENDING
+  CLAIMED
+  PUBLISHED
+  FAILED
+
+  @@map("outbox_dispatch_status")
+}
+
+enum OutboxEventType {
+  INTEGRATION_OBSERVATION_REQUESTED
+  INTEGRATION_OUTCOME_REQUESTED
+  STRIPE_WEBHOOK_VALIDATION_REQUESTED
+  WEBHOOK_VALIDATION_REQUESTED
+  INCIDENT_VALIDATION_REQUESTED
+  INCIDENT_INVESTIGATION_GROUPING_REQUESTED
+  INVESTIGATION_GROUP_PREPARATION_REQUESTED
+  INVESTIGATION_GROUP_INFERENCE_REQUESTED
+
+  @@map("outbox_event_type")
+}
+
+enum EvidencePreparationRunStatus {
+  PENDING
+  RUNNING
+  EVIDENCE_READY
+  FAILED
+
+  @@map("evidence_preparation_run_status")
+}
+
+enum InvestigationInferenceRunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+
+  @@map("investigation_inference_run_status")
+}
+
+model Workspace {
+  accountOwner AccountWorkspace?
+  plannedIntegrations PlannedIntegration[]
+  notificationPreference NotificationPreference?
+  notificationGroups NotificationGroup[]
+  notificationDeliveries NotificationDelivery[]
+  integrationObservations IntegrationObservation[]
+  integrationResponseBaselines IntegrationResponseBaseline[]
+  integrationWorkflowOutcomes IntegrationWorkflowOutcome[]
+  integrationOutcomeLinks IntegrationOutcomeLink[]
+  integrationCoverage IntegrationCoverage[]
+  stripeIntegrations StripeWebhookIntegration[]
+  stripeReceipts StripeWebhookReceipt[]
+  webhookDriftGroups WebhookDriftGroup[]
+  webhookGroupingDecisions WebhookGroupingDecision[]
+  webhookReceipts WebhookReceipt[]
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  apiSpecs     ApiSpec[]
+  ingestionCredentials IngestionCredential[]
+  incidents    Incident[]
+  auditLogs    AuditLog[]
+  outboxEvents OutboxEvent[]
+  patternSeverities PatternSeverityAssignment[]
+  investigationGroups InvestigationGroup[]
+  investigationGroupMemberships InvestigationGroupMembership[]
+  evidencePreparationRuns EvidencePreparationRun[]
+  investigationInferenceRuns InvestigationInferenceRun[]
+  repositoryContextSnapshots RepositoryContextSnapshot[]
+  repositorySnapshotFiles RepositorySnapshotFile[]
+  repositoryServiceFileMappings RepositoryServiceFileMapping[]
+  documentationContextSnapshots DocumentationContextSnapshot[]
+  documentationSnapshotDocuments DocumentationSnapshotDocument[]
+  documentationServiceTopicMappings DocumentationServiceTopicMapping[]
+  deploymentRecords DeploymentRecord[]
+  contractRevisionIntervals ContractRevisionInterval[]
+  deploymentStatusEvents DeploymentStatusEvent[]
+  senders WorkspaceSender[]
+  senderBindings SenderBinding[]
+
+  @@map("workspaces")
+}
+
+model IngestionCredential {
+  integrationObservations IntegrationObservation[]
+  integrationWorkflowOutcomes IntegrationWorkflowOutcome[]
+  integrationCoverage IntegrationCoverage[]
+  stripeIntegrations StripeWebhookIntegration[]
+  stripeReceipts StripeWebhookReceipt[]
+  webhookReceipts WebhookReceipt[]
+  id String @id @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  name String @db.VarChar(80)
+  tokenSha256 String @map("token_sha256") @db.Char(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  senderBindings SenderBinding[]
+  collectedIncidents Incident[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, createdAt])
+  @@map("ingestion_credentials")
+}
+
+model ApiSpec {
+  integrationResponseBaselines IntegrationResponseBaseline[]
+  webhookDriftGroups WebhookDriftGroup[]
+  webhookReceipts WebhookReceipt[]
+  id             String   @id @default(uuid()) @db.Uuid
+  workspaceId    String   @map("workspace_id") @db.Uuid
+  apiKey         String   @map("api_key")
+  name           String
+  version        String
+  openApiVersion String   @map("open_api_version")
+  sourceFilename String   @map("source_filename")
+  sourceText     String   @map("source_text")
+  sourceSha256   String   @map("source_sha256")
+  parsedDocument Json     @map("parsed_document") @db.JsonB
+  environment    String   @default("default")
+  revisionSequence Int    @default(0) @map("revision_sequence")
+  provenance     Json?
+  isActive       Boolean  @default(false) @map("is_active")
+  activatedAt    DateTime? @map("activated_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  incidents Incident[]
+  contractRevisionIntervals ContractRevisionInterval[]
+  investigationGroups InvestigationGroup[]
+
+  @@unique([workspaceId, apiKey, environment, version])
+  @@unique([workspaceId, apiKey, environment, sourceSha256])
+  @@unique([workspaceId, id])
+  @@index([workspaceId, apiKey, environment, isActive])
+  @@map("api_specs")
+}
+
+model Incident {
+  integrationObservations IntegrationObservation[]
+  id                     String           @id @default(uuid()) @db.Uuid
+  workspaceId            String           @map("workspace_id") @db.Uuid
+  apiKey                 String           @map("api_key")
+  environment            String           @default("default")
+  applicationName        String?          @map("application_name")
+  applicationVersion     String?          @map("application_version")
+  platform               String?
+  sdkName                String?          @map("sdk_name")
+  sdkVersion             String?          @map("sdk_version")
+  apiSpecId              String?          @map("api_spec_id") @db.Uuid
+  source                 IncidentSource
+  revisionSelectionMode String? @map("revision_selection_mode")
+  revisionSelection Json? @map("revision_selection") @db.JsonB
+  collectorCredentialId String? @map("collector_credential_id") @db.Uuid
+  senderId String? @map("sender_id") @db.Uuid
+  senderBindingId String? @map("sender_binding_id") @db.Uuid
+  senderClaim Json? @map("sender_claim") @db.JsonB
+  reportedClientRef String? @map("reported_client_ref") @db.Uuid
+  senderProvenance Json? @map("sender_provenance") @db.JsonB
+  sourceEventId          String           @map("source_event_id")
+  httpMethod             String           @map("http_method")
+  requestPath            String           @map("request_path")
+  statusCode             Int              @map("status_code")
+  clientReference        String?          @map("client_reference")
+  sanitizedRequestBody   Json?            @map("sanitized_request_body") @db.JsonB
+  status                 IncidentStatus   @default(RECEIVED)
+  validationStatus       ValidationStatus @default(NOT_RUN) @map("validation_status")
+  validationEvidence     Json?            @map("validation_evidence") @db.JsonB
+  draftText              String?          @map("draft_text") @db.Text
+  draftCitations         Json?            @map("draft_citations") @db.JsonB
+  draftVersion           Int              @default(0) @map("draft_version")
+  approvedBy             String?          @map("approved_by")
+  approvedAt             DateTime?        @map("approved_at") @db.Timestamptz(6)
+  approvedDraftVersion   Int?             @map("approved_draft_version")
+  sentAt                 DateTime?        @map("sent_at") @db.Timestamptz(6)
+  processingErrorCode    String?          @map("processing_error_code")
+  processingErrorMessage String?          @map("processing_error_message") @db.Text
+  occurredAt             DateTime         @map("occurred_at") @db.Timestamptz(6)
+  receivedAt             DateTime         @default(now()) @map("received_at") @db.Timestamptz(6)
+  validatedAt            DateTime?        @map("validated_at") @db.Timestamptz(6)
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  apiSpec      ApiSpec?      @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict)
+  auditLogs    AuditLog[]
+  outboxEvents OutboxEvent[]
+  investigationGroupMemberships InvestigationGroupMembership[]
+  collectorCredential IngestionCredential? @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict, map: "incidents_collector_fk")
+  sender WorkspaceSender? @relation(fields: [workspaceId, senderId], references: [workspaceId, id], onDelete: Restrict, map: "incidents_sender_fk")
+  senderBinding SenderBinding? @relation(fields: [workspaceId, senderBindingId], references: [workspaceId, id], onDelete: Restrict, map: "incidents_sender_binding_fk")
+
+  @@unique([workspaceId, source, sourceEventId])
+  @@unique([workspaceId, id])
+  @@index([workspaceId, status, receivedAt])
+  @@index([workspaceId, occurredAt])
+  @@index([workspaceId, apiSpecId])
+  @@index([workspaceId, apiKey, environment, receivedAt])
+  @@index([workspaceId, senderId, receivedAt])
+  @@map("incidents")
+}
+
+model OutboxEvent {
+  integrationObservationId String? @map("integration_observation_id") @db.Uuid
+  integrationOutcomeId String? @map("integration_outcome_id") @db.Uuid
+  integrationObservation IntegrationObservation? @relation(fields: [workspaceId, integrationObservationId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "outbox_integration_observation_fk")
+  integrationOutcome IntegrationWorkflowOutcome? @relation(fields: [workspaceId, integrationOutcomeId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "outbox_integration_outcome_fk")
+  @@index([workspaceId, integrationObservationId], map: "outbox_integration_observation_idx")
+  @@index([workspaceId, integrationOutcomeId], map: "outbox_integration_outcome_idx")
+  stripeWebhookReceiptId String? @map("stripe_webhook_receipt_id") @db.Uuid
+  stripeWebhookReceipt StripeWebhookReceipt? @relation(fields: [workspaceId, stripeWebhookReceiptId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "outbox_stripe_workspace_fk")
+  webhookReceiptId String? @map("webhook_receipt_id") @db.Uuid
+  webhookReceipt WebhookReceipt? @relation(fields: [workspaceId, webhookReceiptId], references: [workspaceId, id], onDelete: Restrict)
+  id                   String               @id @default(uuid()) @db.Uuid
+  workspaceId          String               @map("workspace_id") @db.Uuid
+  incidentId           String?              @map("incident_id") @db.Uuid
+  investigationGroupId String?              @map("investigation_group_id") @db.Uuid
+  evidencePreparationRunId String?          @map("evidence_preparation_run_id") @db.Uuid
+  dedupeKey            String               @map("dedupe_key")
+  eventType            OutboxEventType      @default(INCIDENT_VALIDATION_REQUESTED) @map("event_type")
+  dispatchStatus       OutboxDispatchStatus @default(PENDING) @map("dispatch_status")
+  attemptCount         Int                  @default(0) @map("attempt_count")
+  claimedAt            DateTime?            @map("claimed_at") @db.Timestamptz(6)
+  claimExpiresAt       DateTime?            @map("claim_expires_at") @db.Timestamptz(6)
+  claimedBy            String?              @map("claimed_by")
+  publishedAt          DateTime?            @map("published_at") @db.Timestamptz(6)
+  lastError            String?              @map("last_error") @db.Text
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  incident           Incident?           @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Restrict)
+  investigationGroup InvestigationGroup? @relation(fields: [workspaceId, investigationGroupId], references: [workspaceId, id], onDelete: Restrict)
+  evidencePreparationRun EvidencePreparationRun? @relation(fields: [workspaceId, evidencePreparationRunId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, dedupeKey])
+  @@index([workspaceId, webhookReceiptId])
+  @@index([workspaceId, stripeWebhookReceiptId], map: "outbox_stripe_receipt_idx")
+  @@index([dispatchStatus, claimExpiresAt, createdAt])
+  @@map("outbox_events")
+}
+
+model StripeWebhookIntegration {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  ingestionCredentialId String @map("ingestion_credential_id") @db.Uuid
+  mode String @default("test")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  disabledAt DateTime? @map("disabled_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  credential IngestionCredential @relation(fields: [workspaceId, ingestionCredentialId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "stripe_webhook_integrations_workspace_id_ingestion_credent_fkey")
+  receipts StripeWebhookReceipt[]
+  @@unique([workspaceId, id])
+  @@index([workspaceId, ingestionCredentialId], map: "stripe_integrations_credential_idx")
+  @@map("stripe_webhook_integrations")
+}
+
+model StripeWebhookReceipt {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  integrationId String @map("integration_id") @db.Uuid
+  collectorCredentialId String @map("collector_credential_id") @db.Uuid
+  sourceEventId String @map("source_event_id") @db.VarChar(100)
+  eventType String @map("event_type") @db.VarChar(64)
+  eventCreatedAt DateTime @map("event_created_at") @db.Timestamptz(6)
+  reportedApiVersion String? @map("reported_api_version") @db.VarChar(64)
+  protectedShape Json @map("protected_shape") @db.JsonB
+  verification Json @db.JsonB
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  validationStatus ValidationStatus @default(NOT_RUN) @map("validation_status")
+  validationEvidence Json? @map("validation_evidence") @db.JsonB
+  validatedAt DateTime? @map("validated_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  integration StripeWebhookIntegration @relation(fields: [workspaceId, integrationId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction)
+  collector IngestionCredential @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "stripe_webhook_receipts_workspace_id_collector_credential__fkey")
+  outboxEvents OutboxEvent[]
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, integrationId, sourceEventId])
+  @@index([workspaceId, receivedAt], map: "stripe_receipts_received_idx")
+  @@map("stripe_webhook_receipts")
+}
+
+model WebhookReceipt {
+  groupingDecision WebhookGroupingDecision?
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  collectorCredentialId String @map("collector_credential_id") @db.Uuid
+  sourceEventId String @map("source_event_id") @db.Uuid
+  apiKey String @map("api_key")
+  environment String
+  operationPath String @map("operation_path")
+  sanitizedPayload Json @map("sanitized_payload") @db.JsonB
+  protection Json @db.JsonB
+  apiSpecId String? @map("api_spec_id") @db.Uuid
+  revisionSelection Json @map("revision_selection") @db.JsonB
+  senderVerification Json? @map("sender_verification") @db.JsonB
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  validationStatus ValidationStatus @default(NOT_RUN) @map("validation_status")
+  validationEvidence Json? @map("validation_evidence") @db.JsonB
+  validatedAt DateTime? @map("validated_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  collector IngestionCredential @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict)
+  apiSpec ApiSpec? @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict)
+  outboxEvents OutboxEvent[]
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, collectorCredentialId, sourceEventId])
+  @@index([workspaceId, receivedAt])
+  @@index([workspaceId, apiSpecId])
+  @@map("webhook_receipts")
+}
+
+model WebhookDriftGroup {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  apiKey String @map("api_key")
+  environment String
+  httpMethod String @map("http_method")
+  operationPath String @map("operation_path")
+  senderId String @map("sender_id") @db.Uuid
+  apiSpecId String @map("api_spec_id") @db.Uuid
+  sourceSha256 String @map("source_sha256")
+  driftFingerprint String @map("drift_fingerprint")
+  groupingVersion Int @map("grouping_version")
+  windowStart DateTime @map("window_start") @db.Timestamptz(6)
+  windowEnd DateTime @map("window_end") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  sender WorkspaceSender @relation(fields: [workspaceId, senderId], references: [workspaceId, id], onDelete: Restrict)
+  apiSpec ApiSpec @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict)
+  decisions WebhookGroupingDecision[]
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, apiKey, environment, operationPath, senderId, apiSpecId, sourceSha256, driftFingerprint, windowStart, groupingVersion], map: "webhook_drift_dimensions_key")
+  @@index([workspaceId, senderId, windowStart], map: "webhook_drift_sender_idx")
+  @@index([workspaceId, apiSpecId], map: "webhook_drift_spec_idx")
+  @@map("webhook_drift_groups")
+}
+
+model WebhookGroupingDecision {
+  receiptId String @id @map("receipt_id") @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  groupId String? @map("group_id") @db.Uuid
+  reason String
+  groupingVersion Int @map("grouping_version")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  receipt WebhookReceipt @relation(fields: [workspaceId, receiptId], references: [workspaceId, id], onDelete: Restrict)
+  group WebhookDriftGroup? @relation(fields: [workspaceId, groupId], references: [workspaceId, id], onDelete: Restrict)
+  @@unique([workspaceId, receiptId])
+  @@index([workspaceId, groupId], map: "webhook_decision_group_idx")
+  @@map("webhook_grouping_decisions")
+}
+
+model InvestigationGroup {
+  id                 String   @id @default(uuid()) @db.Uuid
+  workspaceId        String   @map("workspace_id") @db.Uuid
+  apiKey             String   @map("api_key")
+  environment        String
+  httpMethod         String   @map("http_method")
+  operationIdentity  String   @map("operation_identity")
+  apiSpecId          String?  @map("api_spec_id") @db.Uuid
+  pinnedApiSpecKey   String   @map("pinned_api_spec_key")
+  findingSignature   String   @map("finding_signature")
+  groupingVersion Int @default(1) @map("grouping_version")
+  senderGroupingKey String @default("__legacy_unspecified__") @map("sender_grouping_key")
+  senderId String? @map("sender_id") @db.Uuid
+  windowStart        DateTime @map("window_start") @db.Timestamptz(6)
+  windowEnd          DateTime @map("window_end") @db.Timestamptz(6)
+  membershipVersion  Int      @default(0) @map("membership_version")
+  preparedMembershipVersion Int @default(0) @map("prepared_membership_version")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace          Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  apiSpec            ApiSpec?                       @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict)
+  sender WorkspaceSender? @relation(fields: [workspaceId, senderId], references: [workspaceId, id], onDelete: Restrict, map: "investigation_group_sender_fk")
+  memberships        InvestigationGroupMembership[]
+  preparationRuns    EvidencePreparationRun[]
+  inferenceRuns      InvestigationInferenceRun[]
+  outboxEvents       OutboxEvent[]
+
+  inferredMembershipVersion Int @default(0) @map("inferred_membership_version")
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, apiKey, environment, httpMethod, operationIdentity, pinnedApiSpecKey, findingSignature, windowStart, groupingVersion, senderGroupingKey], map: "investigation_groups_grouping_dimensions_key")
+  @@index([workspaceId, senderId, windowStart])
+  @@index([workspaceId, windowStart])
+  @@map("investigation_groups")
+}
+
+model InvestigationGroupMembership {
+  id                   String   @id @default(uuid()) @db.Uuid
+  workspaceId          String   @map("workspace_id") @db.Uuid
+  investigationGroupId String   @map("investigation_group_id") @db.Uuid
+  incidentId           String   @map("incident_id") @db.Uuid
+  incidentReceivedAt   DateTime @map("incident_received_at") @db.Timestamptz(6)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  investigationGroup InvestigationGroup @relation(fields: [workspaceId, investigationGroupId], references: [workspaceId, id], onDelete: Restrict)
+  incident           Incident           @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, incidentId])
+  @@unique([workspaceId, investigationGroupId, incidentId])
+  @@index([workspaceId, investigationGroupId, incidentReceivedAt])
+  @@map("investigation_group_memberships")
+}
+
+model EvidencePreparationRun {
+  id                   String                       @id @default(uuid()) @db.Uuid
+  workspaceId          String                       @map("workspace_id") @db.Uuid
+  investigationGroupId String                       @map("investigation_group_id") @db.Uuid
+  runSequence          Int                          @map("run_sequence")
+  membershipVersion    Int                          @map("membership_version")
+  status               EvidencePreparationRunStatus @default(PENDING)
+  includedIncidentCount Int                         @default(0) @map("included_incident_count")
+  omittedIncidentCount  Int                         @default(0) @map("omitted_incident_count")
+  evidenceFormatVersion Int                         @map("evidence_format_version")
+  builderVersion       String                       @map("builder_version")
+  protectedSummary     Json?                        @map("protected_summary") @db.JsonB
+  failureCode          String?                      @map("failure_code")
+  attemptCount         Int                          @default(0) @map("attempt_count")
+  claimedAt            DateTime?                    @map("claimed_at") @db.Timestamptz(6)
+  claimExpiresAt       DateTime?                    @map("claim_expires_at") @db.Timestamptz(6)
+  claimedBy            String?                      @map("claimed_by")
+  startedAt            DateTime?                    @map("started_at") @db.Timestamptz(6)
+  completedAt          DateTime?                    @map("completed_at") @db.Timestamptz(6)
+  createdAt            DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  investigationGroup InvestigationGroup @relation(fields: [workspaceId, investigationGroupId], references: [workspaceId, id], onDelete: Restrict)
+  outboxEvents       OutboxEvent[]
+  inferenceRuns      InvestigationInferenceRun[]
+
+  @@unique([workspaceId, investigationGroupId, runSequence])
+  @@unique([workspaceId, id])
+  @@index([status, claimExpiresAt, createdAt])
+  @@map("evidence_preparation_runs")
+}
+
+model InvestigationInferenceRun {
+  id                       String                         @id @default(uuid()) @db.Uuid
+  workspaceId              String                         @map("workspace_id") @db.Uuid
+  investigationGroupId     String                         @map("investigation_group_id") @db.Uuid
+  evidencePreparationRunId String                         @map("evidence_preparation_run_id") @db.Uuid
+  runSequence              Int                            @map("run_sequence")
+  membershipVersion        Int                            @map("membership_version")
+  evidenceInputHash        String                         @map("evidence_input_hash")
+  repositoryContextSnapshotId String?                     @map("repository_context_snapshot_id") @db.Uuid
+  repositoryExcerptRefs    Json?                          @map("repository_excerpt_refs") @db.JsonB
+  documentationContextSnapshotId String?                 @map("documentation_context_snapshot_id") @db.Uuid
+  documentationExcerptRefs Json?                          @map("documentation_excerpt_refs") @db.JsonB
+  deploymentEvidenceRefs   Json?                          @map("deployment_evidence_refs") @db.JsonB
+  deploymentContextFingerprint String?                      @map("deployment_context_fingerprint")
+  deploymentContextIncluded Boolean                        @default(false) @map("deployment_context_included")
+  promptSchemaVersion      String                         @map("prompt_schema_version")
+  provider                 String?
+  model                    String?
+  status                   InvestigationInferenceRunStatus @default(PENDING)
+  includedEvidenceCount    Int                            @default(0) @map("included_evidence_count")
+  unavailableEvidenceCount Int                            @default(0) @map("unavailable_evidence_count")
+  omittedEvidenceCount     Int                            @default(0) @map("omitted_evidence_count")
+  validatedOutput          Json?                          @map("validated_output") @db.JsonB
+  failureCode              String?                        @map("failure_code")
+  usageMetadata            Json?                          @map("usage_metadata") @db.JsonB
+  attemptCount             Int                            @default(0) @map("attempt_count")
+  claimedAt                DateTime?                      @map("claimed_at") @db.Timestamptz(6)
+  claimExpiresAt           DateTime?                      @map("claim_expires_at") @db.Timestamptz(6)
+  claimedBy                String?                        @map("claimed_by")
+  startedAt                DateTime?                      @map("started_at") @db.Timestamptz(6)
+  completedAt              DateTime?                      @map("completed_at") @db.Timestamptz(6)
+  createdAt                DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  workspace              Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  investigationGroup     InvestigationGroup     @relation(fields: [workspaceId, investigationGroupId], references: [workspaceId, id], onDelete: Restrict)
+  evidencePreparationRun EvidencePreparationRun @relation(fields: [workspaceId, evidencePreparationRunId], references: [workspaceId, id], onDelete: Restrict)
+  repositoryContextSnapshot RepositoryContextSnapshot? @relation(fields: [workspaceId, repositoryContextSnapshotId], references: [workspaceId, id], onDelete: Restrict)
+  documentationContextSnapshot DocumentationContextSnapshot? @relation(fields: [workspaceId, documentationContextSnapshotId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, investigationGroupId, runSequence])
+  @@index([workspaceId, evidencePreparationRunId])
+  @@index([status, claimExpiresAt, createdAt])
+  @@map("investigation_inference_runs")
+}
+
+model AuditLog {
+  id          String         @id @default(uuid()) @db.Uuid
+  workspaceId String         @map("workspace_id") @db.Uuid
+  incidentId  String?        @map("incident_id") @db.Uuid
+  eventType   AuditEventType @map("event_type")
+  actorType   ActorType      @map("actor_type")
+  actorId     String?        @map("actor_id")
+  metadata    Json           @db.JsonB
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  incident  Incident? @relation(fields: [workspaceId, incidentId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, incidentId, createdAt])
+  @@map("audit_logs")
+}
+
+model PatternSeverityAssignment {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  patternKey  String   @map("pattern_key")
+  severity    String
+  provenance  String
+  actorId     String   @map("actor_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, patternKey])
+  @@map("pattern_severity_assignments")
+}
+
+model RepositoryContextSnapshot {
+  id              String                       @id @default(uuid()) @db.Uuid
+  workspaceId     String                       @map("workspace_id") @db.Uuid
+  apiKey          String                       @map("api_key")
+  environment     String
+  repository      String
+  commitSha       String                       @map("commit_sha")
+  importDigest    String                       @map("import_digest")
+  provenance      Json?                        @db.JsonB
+  importStatus    RepositorySnapshotImportStatus @map("import_status")
+  omissionSummary Json?                        @map("omission_summary") @db.JsonB
+  createdAt       DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace     Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  files         RepositorySnapshotFile[]
+  inferenceRuns InvestigationInferenceRun[]
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, repository, commitSha, importDigest], map: "repository_context_snapshots_idempotent_key")
+  @@index([workspaceId, apiKey, environment, createdAt])
+  @@map("repository_context_snapshots")
+}
+
+model RepositorySnapshotFile {
+  id             String   @id @default(uuid()) @db.Uuid
+  workspaceId    String   @map("workspace_id") @db.Uuid
+  snapshotId     String   @map("snapshot_id") @db.Uuid
+  relativePath   String   @map("relative_path")
+  sourceSha256   String   @map("source_sha256")
+  sanitizedText  String   @map("sanitized_text") @db.Text
+  lineCount      Int      @map("line_count")
+  redactionCount Int      @default(0) @map("redaction_count")
+  hadOmissions   Boolean  @default(false) @map("had_omissions")
+  omissionCodes  Json?    @map("omission_codes") @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  snapshot  RepositoryContextSnapshot @relation(fields: [workspaceId, snapshotId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, snapshotId, relativePath])
+  @@unique([workspaceId, id])
+  @@map("repository_snapshot_files")
+}
+
+model RepositoryServiceFileMapping {
+  id               String   @id @default(uuid()) @db.Uuid
+  workspaceId      String   @map("workspace_id") @db.Uuid
+  apiKey           String   @map("api_key")
+  environment      String
+  httpMethod       String   @default("*") @map("http_method")
+  operationPath    String   @map("operation_path")
+  relativeFilePath String   @map("relative_file_path")
+  matchMode        String   @map("match_mode")
+  identifierToken  String?  @map("identifier_token")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, apiKey, environment, httpMethod, operationPath, relativeFilePath, matchMode, identifierToken], map: "repository_service_file_mappings_unique_key")
+  @@map("repository_service_file_mappings")
+}
+
+model DocumentationContextSnapshot {
+  id              String                           @id @default(uuid()) @db.Uuid
+  workspaceId     String                           @map("workspace_id") @db.Uuid
+  sourceKey       String                           @map("source_key")
+  apiKey          String                           @map("api_key")
+  environment     String
+  importDigest    String                           @map("import_digest")
+  importStatus    DocumentationSnapshotImportStatus @map("import_status")
+  omissionSummary Json?                            @map("omission_summary") @db.JsonB
+  createdAt       DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace     Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  documents     DocumentationSnapshotDocument[]
+  inferenceRuns InvestigationInferenceRun[]
+
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, sourceKey, importDigest], map: "documentation_context_snapshots_idempotent_key")
+  @@index([workspaceId, apiKey, environment, createdAt])
+  @@map("documentation_context_snapshots")
+}
+
+model DocumentationSnapshotDocument {
+  id                    String   @id @default(uuid()) @db.Uuid
+  workspaceId           String   @map("workspace_id") @db.Uuid
+  snapshotId            String   @map("snapshot_id") @db.Uuid
+  documentId            String   @map("document_id")
+  title                 String
+  contentSha256         String   @map("content_sha256")
+  contentVersion        String?  @map("content_version")
+  sourceUpdatedAt       DateTime? @map("source_updated_at") @db.Timestamptz(6)
+  sanitizedText         String   @map("sanitized_text") @db.Text
+  lineCount             Int      @map("line_count")
+  redactionCount        Int      @default(0) @map("redaction_count")
+  hadOmissions          Boolean  @default(false) @map("had_omissions")
+  omissionCodes         Json?    @map("omission_codes") @db.JsonB
+  applicabilityKind     String   @map("applicability_kind")
+  applicabilityApiSpecId String? @map("applicability_api_spec_id") @db.Uuid
+  trustedSourceUrl      String?  @map("trusted_source_url")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace                 @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  snapshot  DocumentationContextSnapshot @relation(fields: [workspaceId, snapshotId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, snapshotId, documentId])
+  @@unique([workspaceId, id])
+  @@map("documentation_snapshot_documents")
+}
+
+model DocumentationServiceTopicMapping {
+  id              String   @id @default(uuid()) @db.Uuid
+  workspaceId     String   @map("workspace_id") @db.Uuid
+  apiKey          String   @map("api_key")
+  environment     String
+  httpMethod      String   @default("*") @map("http_method")
+  operationPath   String   @map("operation_path")
+  documentId      String   @map("document_id")
+  sectionHeading  String   @map("section_heading")
+  topicToken      String?  @map("topic_token")
+  matchMode       String   @map("match_mode")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, apiKey, environment, httpMethod, operationPath, documentId, sectionHeading, matchMode, topicToken], map: "documentation_service_topic_mappings_unique_key")
+  @@map("documentation_service_topic_mappings")
+}
+
+model DeploymentRecord {
+  id                     String   @id @default(uuid()) @db.Uuid
+  workspaceId            String   @map("workspace_id") @db.Uuid
+  integrationKey         String   @map("integration_key")
+  sourceDeploymentId     String   @map("source_deployment_id")
+  apiKey                 String   @map("api_key")
+  environment            String
+  repository             String?
+  commitSha              String?  @map("commit_sha")
+  artifactRef            String?  @map("artifact_ref")
+  apiSpecId              String?  @map("api_spec_id") @db.Uuid
+  replacesSourceDeploymentId String? @map("replaces_source_deployment_id")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  events    DeploymentStatusEvent[]
+  contractRevisionIntervals ContractRevisionInterval[]
+
+  @@unique([workspaceId, integrationKey, sourceDeploymentId], map: "deployment_records_identity_key")
+  @@unique([workspaceId, id])
+  @@index([workspaceId, apiKey, environment, createdAt])
+  @@map("deployment_records")
+}
+
+model DeploymentStatusEvent {
+  id                 String               @id @default(uuid()) @db.Uuid
+  workspaceId        String               @map("workspace_id") @db.Uuid
+  deploymentRecordId String               @map("deployment_record_id") @db.Uuid
+  integrationKey     String               @map("integration_key")
+  sourceEventId      String               @map("source_event_id")
+  status             DeploymentEventStatus
+  sourceReportedAt   DateTime             @map("source_reported_at") @db.Timestamptz(6)
+  receivedAt         DateTime             @default(now()) @map("received_at") @db.Timestamptz(6)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workspace        Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  deploymentRecord DeploymentRecord @relation(fields: [workspaceId, deploymentRecordId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([workspaceId, integrationKey, sourceEventId], map: "deployment_status_events_idempotent_key")
+  @@unique([workspaceId, id])
+  @@index([workspaceId, deploymentRecordId, sourceReportedAt])
+  @@map("deployment_status_events")
+}
+
+model ContractRevisionInterval {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  integrationKey String @map("integration_key")
+  sourceIntervalId String @map("source_interval_id")
+  sourceDeploymentId String @map("source_deployment_id")
+  deploymentRecordId String @map("deployment_record_id") @db.Uuid
+  apiKey String @map("api_key")
+  environment String
+  apiSpecId String @map("api_spec_id") @db.Uuid
+  sourceSha256 String @map("source_sha256") @db.Char(64)
+  validFrom DateTime @map("valid_from") @db.Timestamptz(3)
+  validUntil DateTime @map("valid_until") @db.Timestamptz(3)
+  importDigest String @map("import_digest") @db.Char(64)
+  importedBy String @map("imported_by")
+  assertionKind String @map("assertion_kind")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  apiSpec ApiSpec @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict)
+  deploymentRecord DeploymentRecord @relation(fields: [workspaceId, deploymentRecordId], references: [workspaceId, id], onDelete: Restrict)
+  @@unique([workspaceId, integrationKey, sourceIntervalId], map: "historical_binding_identity_key")
+  @@index([workspaceId, apiKey, environment, validFrom, validUntil], map: "historical_binding_scope_time_idx")
+  @@map("contract_revision_intervals")
+}
+
+model WorkspaceSender {
+  webhookDriftGroups WebhookDriftGroup[]
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  senderKey String @map("sender_key") @db.Uuid
+  displayName String @map("display_name") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  bindings SenderBinding[]
+  incidents Incident[]
+  investigationGroups InvestigationGroup[]
+  @@unique([workspaceId, senderKey])
+  @@unique([workspaceId, id])
+  @@map("workspace_senders")
+}
+
+model SenderBinding {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  ingestionCredentialId String @map("ingestion_credential_id") @db.Uuid
+  apiKey String @map("api_key")
+  environment String
+  principalKind String @map("principal_kind")
+  principalRef String @map("principal_ref") @db.Uuid
+  senderId String @map("sender_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  ingestionCredential IngestionCredential @relation(fields: [workspaceId, ingestionCredentialId], references: [workspaceId, id], onDelete: Restrict)
+  sender WorkspaceSender @relation(fields: [workspaceId, senderId], references: [workspaceId, id], onDelete: Restrict)
+  incidents Incident[]
+  @@unique([workspaceId, ingestionCredentialId, apiKey, environment, principalKind, principalRef], map: "sender_binding_scope_key")
+  @@unique([workspaceId, id])
+  @@map("sender_bindings")
+}
+
+model IntegrationObservation {
+  notificationMembers NotificationMember[]
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  collectorCredentialId String @map("collector_credential_id") @db.Uuid
+  sourceEventId String @map("source_event_id") @db.Uuid
+  callId String @map("call_id") @db.Uuid
+  attempt Int
+  integrationKey String @map("integration_key")
+  providerKey String @map("provider_key")
+  environment String
+  httpMethod String @map("http_method")
+  operationPath String @map("operation_path")
+  correlationKind String? @map("correlation_kind")
+  correlationId String? @map("correlation_id") @db.Uuid
+  correlationAttempt Int? @map("correlation_attempt")
+  resultKind String @map("result_kind")
+  statusCode Int? @map("status_code")
+  durationMs Float @map("duration_ms")
+  scopeKey String @map("scope_key")
+  baselineId String? @map("baseline_id") @db.Uuid
+  requestIncidentId String? @map("request_incident_id") @db.Uuid
+  envelope Json @db.JsonB
+  payloadDigest String @map("payload_digest")
+  occurredAt DateTime @map("occurred_at") @db.Timestamptz(6)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  processingState String @default("PENDING") @map("processing_state")
+  detectorEvidence Json? @map("detector_evidence") @db.JsonB
+  driftSignature String? @map("drift_signature")
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  linkTruncated Boolean @default(false) @map("link_truncated")
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  collector IngestionCredential @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_observation_collector_fk")
+  baseline IntegrationResponseBaseline? @relation("ObservationBaseline", fields: [workspaceId, baselineId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_observation_baseline_fk")
+  requestIncident Incident? @relation(fields: [workspaceId, requestIncidentId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_observation_incident_fk")
+  baselineSamples IntegrationResponseBaseline[] @relation("ObservedBaselineSample")
+  outcomeLinks IntegrationOutcomeLink[]
+  outboxEvents OutboxEvent[]
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, sourceEventId])
+  @@unique([workspaceId, integrationKey, environment, callId, attempt], map: "integration_observation_attempt_key")
+  @@index([workspaceId, integrationKey, environment, receivedAt], map: "integration_observation_scope_idx")
+  @@index([workspaceId, integrationKey, environment, correlationKind, correlationId, correlationAttempt], map: "integration_observation_correlation_idx")
+  @@index([workspaceId, baselineId, driftSignature], map: "integration_observation_drift_idx")
+  @@index([workspaceId, collectorCredentialId], map: "integration_observation_collector_idx")
+  @@index([workspaceId, requestIncidentId], map: "integration_observation_incident_idx")
+  @@map("integration_observations")
+}
+model IntegrationResponseBaseline {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  scopeKey String @map("scope_key")
+  integrationKey String @map("integration_key")
+  providerKey String @map("provider_key")
+  environment String
+  httpMethod String @map("http_method")
+  operationPath String @map("operation_path")
+  statusCode Int @map("status_code")
+  version Int
+  origin String
+  sampleObservationId String? @map("sample_observation_id") @db.Uuid
+  apiSpecId String? @map("api_spec_id") @db.Uuid
+  sourceSha256 String? @map("source_sha256")
+  expectedShape Json @map("expected_shape") @db.JsonB
+  pointers Json @db.JsonB
+  importDigest String @map("import_digest")
+  active Boolean @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  activatedAt DateTime? @map("activated_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sampleObservation IntegrationObservation? @relation("ObservedBaselineSample", fields: [workspaceId, sampleObservationId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_baseline_sample_fk")
+  apiSpec ApiSpec? @relation(fields: [workspaceId, apiSpecId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_baseline_spec_fk")
+  observations IntegrationObservation[] @relation("ObservationBaseline")
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, scopeKey, version], map: "integration_baseline_version_key")
+  @@unique([workspaceId, scopeKey, importDigest], map: "integration_baseline_import_key")
+  @@index([workspaceId, sampleObservationId], map: "integration_baseline_sample_idx")
+  @@index([workspaceId, apiSpecId], map: "integration_baseline_spec_idx")
+  @@map("integration_response_baselines")
+}
+model IntegrationWorkflowOutcome {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  collectorCredentialId String @map("collector_credential_id") @db.Uuid
+  sourceEventId String @map("source_event_id") @db.Uuid
+  integrationKey String @map("integration_key")
+  providerKey String @map("provider_key")
+  environment String
+  correlationKind String @map("correlation_kind")
+  correlationId String @map("correlation_id") @db.Uuid
+  correlationAttempt Int @map("correlation_attempt")
+  outcome String
+  occurredAt DateTime @map("occurred_at") @db.Timestamptz(6)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  envelope Json @db.JsonB
+  payloadDigest String @map("payload_digest")
+  processingState String @default("PENDING") @map("processing_state")
+  processedAt DateTime? @map("processed_at") @db.Timestamptz(6)
+  linkTruncated Boolean @default(false) @map("link_truncated")
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  collector IngestionCredential @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_outcome_collector_fk")
+  observationLinks IntegrationOutcomeLink[]
+  outboxEvents OutboxEvent[]
+  @@unique([workspaceId, id])
+  @@unique([workspaceId, sourceEventId])
+  @@unique([workspaceId, integrationKey, environment, correlationKind, correlationId, correlationAttempt], map: "integration_outcome_attempt_key")
+  @@index([workspaceId, integrationKey, environment, receivedAt], map: "integration_outcome_scope_idx")
+  @@index([workspaceId, collectorCredentialId], map: "integration_outcome_collector_idx")
+  @@map("integration_workflow_outcomes")
+}
+model IntegrationOutcomeLink {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  observationId String @map("observation_id") @db.Uuid
+  outcomeId String @map("outcome_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  observation IntegrationObservation @relation(fields: [workspaceId, observationId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_link_observation_fk")
+  outcome IntegrationWorkflowOutcome @relation(fields: [workspaceId, outcomeId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_link_outcome_fk")
+  @@unique([workspaceId, observationId, outcomeId], map: "integration_link_pair_key")
+  @@index([workspaceId, outcomeId], map: "integration_link_outcome_idx")
+  @@map("integration_outcome_links")
+}
+model IntegrationCoverage {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @map("workspace_id") @db.Uuid
+  collectorCredentialId String @map("collector_credential_id") @db.Uuid
+  sourceEventId String @map("source_event_id") @db.Uuid
+  instanceId String @map("instance_id") @db.Uuid
+  sequence Int
+  integrationKey String @map("integration_key")
+  providerKey String @map("provider_key")
+  environment String
+  envelope Json @db.JsonB
+  payloadDigest String @map("payload_digest")
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  collector IngestionCredential @relation(fields: [workspaceId, collectorCredentialId], references: [workspaceId, id], onDelete: Restrict, onUpdate: NoAction, map: "integration_coverage_collector_fk")
+  @@unique([workspaceId, sourceEventId])
+  @@unique([workspaceId, instanceId, sequence], map: "integration_coverage_sequence_key")
+  @@index([workspaceId, integrationKey, environment, receivedAt], map: "integration_coverage_scope_idx")
+  @@index([workspaceId, collectorCredentialId], map: "integration_coverage_collector_idx")
+  @@map("integration_capture_coverage")
+}
+
+model NotificationPreference {
+ workspaceId String @id @map("workspace_id") @db.Uuid
+ preferences Json @db.JsonB
+ enabledSince DateTime @default(now()) @map("enabled_since") @db.Timestamptz(6)
+ digestCursor DateTime @default(now()) @map("digest_cursor") @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ @@map("notification_preferences")
+}
+model NotificationGroup {
+ workspaceId String @map("workspace_id") @db.Uuid
+ groupKey String @map("group_key")
+ summary Json @db.JsonB
+ notifiedCalls Int @default(0) @map("notified_calls")
+ notifiedFailed Int @default(0) @map("notified_failed")
+ evaluatedAt DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ members NotificationMember[]
+ @@id([workspaceId,groupKey])
+ @@map("notification_groups")
+}
+model NotificationMember {
+ workspaceId String @map("workspace_id") @db.Uuid
+ groupKey String @map("group_key")
+ observationId String @map("observation_id") @db.Uuid
+ group NotificationGroup @relation(fields:[workspaceId,groupKey],references:[workspaceId,groupKey],onDelete:Restrict,onUpdate:NoAction)
+ observation IntegrationObservation @relation(fields:[workspaceId,observationId],references:[workspaceId,id],onDelete:Restrict,onUpdate:NoAction)
+ @@id([workspaceId,observationId])
+ @@index([workspaceId,groupKey],map:"notification_members_group_idx")
+ @@map("notification_members")
+}
+model NotificationDelivery {
+ id String @id @db.Uuid
+ workspaceId String @map("workspace_id") @db.Uuid
+ dedupeKey String @map("dedupe_key")
+ destination String
+ payload Json @db.JsonB
+ state String @default("PENDING")
+ attempts Int @default(0)
+ availableAt DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+ sentAt DateTime? @map("sent_at") @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ @@unique([workspaceId,dedupeKey])
+ @@index([state,availableAt],map:"notification_delivery_pending_idx")
+ @@map("notification_deliveries")
+}
+
+model SpekAuthUser {
+ id String @id
+ name String
+ email String @unique
+ emailVerified Boolean @default(false)
+ image String?
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ sessions SpekAuthSession[]
+ accounts SpekAuthAccount[]
+ workspace AccountWorkspace?
+ @@map("auth_user")
+}
+model SpekAuthSession {
+ id String @id
+ userId String
+ token String @unique
+ expiresAt DateTime @db.Timestamptz(6)
+ ipAddress String?
+ userAgent String?
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ user SpekAuthUser @relation(fields:[userId],references:[id],onDelete:Cascade,onUpdate:NoAction)
+ @@index([userId],map:"auth_session_user_idx")
+ @@map("auth_session")
+}
+model SpekAuthAccount {
+ id String @id
+ userId String
+ accountId String
+ providerId String
+ accessToken String?
+ refreshToken String?
+ accessTokenExpiresAt DateTime? @db.Timestamptz(6)
+ refreshTokenExpiresAt DateTime? @db.Timestamptz(6)
+ scope String?
+ idToken String?
+ password String?
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ user SpekAuthUser @relation(fields:[userId],references:[id],onDelete:Cascade,onUpdate:NoAction)
+ @@unique([providerId,accountId])
+ @@index([userId],map:"auth_account_user_idx")
+ @@map("auth_account")
+}
+model SpekAuthVerification {
+ id String @id
+ identifier String
+ value String
+ expiresAt DateTime @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([identifier],map:"auth_verification_identifier_idx")
+ @@map("auth_verification")
+}
+model AccountWorkspace {
+ userId String @id @map("user_id")
+ workspaceId String @unique @map("workspace_id") @db.Uuid
+ user SpekAuthUser @relation(fields:[userId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ @@map("account_workspaces")
+}
+model PlannedIntegration {
+ workspaceId String @map("workspace_id") @db.Uuid
+ integrationKey String @map("integration_key")
+ providerKey String @map("provider_key")
+ environment String
+ setup Json @db.JsonB
+ configured Boolean @default(false)
+ createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+ updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+ workspace Workspace @relation(fields:[workspaceId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+ @@id([workspaceId,integrationKey,providerKey,environment])
+ @@map("planned_integrations")
+}

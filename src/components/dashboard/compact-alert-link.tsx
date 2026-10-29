@@ -1,0 +1,3 @@
+"use client";
+import { focusRing,secondaryAction } from './styles';
+export function CompactAlertLink({href,label='Open alert window'}:{href:string;label?:string}){return <span className="inline-flex flex-wrap items-center gap-3"><a href={href} className={secondaryAction+' '+focusRing} onClick={event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();try{const popup=window.open(href,'spektrace-alert','popup=yes,width=760,height=780,resizable=yes,scrollbars=yes');if(popup){popup.opener=null;popup.focus();return;}}catch{}window.location.assign(href);}}>{label}</a><a href={href} className={'inline-flex min-h-11 items-center text-xs underline '+focusRing}>Open in this tab</a></span>;}

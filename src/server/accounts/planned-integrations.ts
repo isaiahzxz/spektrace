@@ -1,0 +1,8 @@
+import type { PrismaClient } from "@/generated/prisma/client";
+import { z } from "zod";
+import { identitySchema } from "@/lib/integration-observations/contract";
+import { initialSetup,setupSchema } from "@/lib/onboarding/setup";
+export const plannedSchema=z.object({integrations:z.array(identitySchema).min(1).max(20)}).strict();
+export async function listPlanned(db:PrismaClient,ws:string){return db.$queryRaw<{integration_key:string;provider_key:string;environment:string;setup:unknown;configured:boolean}[]>`SELECT integration_key,provider_key,environment,setup,configured FROM planned_integrations WHERE workspace_id=${ws}::uuid ORDER BY created_at,integration_key LIMIT 100`;}
+export async function savePlanned(db:PrismaClient,ws:string,raw:unknown){const input=plannedSchema.parse(raw);return db.$transaction(async tx=>{for(const identity of input.integrations){const setup={...initialSetup,...identity};await tx.$executeRaw`INSERT INTO planned_integrations(workspace_id,integration_key,provider_key,environment,setup) VALUES(${ws}::uuid,${identity.key},${identity.provider},${identity.environment},${JSON.stringify(setup)}::jsonb) ON CONFLICT DO NOTHING`;}return {saved:input.integrations.length};});}
+export async function saveIntegrationSetup(db:PrismaClient,ws:string,raw:unknown){const setup=setupSchema.parse(raw);await db.$executeRaw`INSERT INTO planned_integrations(workspace_id,integration_key,provider_key,environment,setup,configured) VALUES(${ws}::uuid,${setup.key},${setup.provider},${setup.environment},${JSON.stringify(setup)}::jsonb,true) ON CONFLICT(workspace_id,integration_key,provider_key,environment) DO UPDATE SET setup=EXCLUDED.setup,configured=true,updated_at=now()`;return {saved:true};}

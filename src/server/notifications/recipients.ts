@@ -1,0 +1,2 @@
+import type { PrismaClient } from '@/generated/prisma/client';
+export async function workspaceEmailRecipients(db:PrismaClient,workspaceId:string,configured?:string[]){const rows=await db.$queryRaw<{email:string}[]>`SELECT u.email FROM auth_user u JOIN account_workspaces w ON w.user_id=u.id WHERE w.workspace_id=${workspaceId}::uuid AND u."emailVerified"=true`;if(rows.length)return rows.map(r=>r.email);if(process.env.SPEKTRACE_ACCOUNTS_ENABLED==='true')return [];return configured??[];}

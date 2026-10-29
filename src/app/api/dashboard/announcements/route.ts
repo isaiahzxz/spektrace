@@ -1,0 +1,6 @@
+import { allowLocalDashboard,readSetupJson } from '@/lib/http/local-dashboard';
+import { canEditAnnouncements,readAnnouncement,writeAnnouncement } from '@/server/dashboard/announcements';
+import { requestWorkspace } from '@/server/accounts/workspace';
+import { getPrisma } from '@/lib/db';
+export async function GET(request:Request){if(!allowLocalDashboard(request))return new Response(null,{status:404});try{if(!await canEditAnnouncements(request.headers))return new Response(null,{status:403});await requestWorkspace(request,getPrisma());return Response.json(await readAnnouncement(),{headers:{'cache-control':'no-store'}});}catch{return Response.json({error:'Announcements could not be loaded.'},{status:503});}}
+export async function PUT(request:Request){if(!allowLocalDashboard(request,true))return new Response(null,{status:403});try{await requestWorkspace(request,getPrisma());if(!await canEditAnnouncements(request.headers))return new Response(null,{status:403});const value=await readSetupJson(request,8192);await writeAnnouncement(value);return Response.json({ok:true});}catch{return Response.json({error:'Could not save. Use a title up to 80 characters and a message up to 600 characters.'},{status:400});}}

@@ -1,0 +1,13 @@
+import { z } from "zod";
+const label = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/);
+const origin = z.string().refine(value => { try {
+    const u = new URL(value);
+    return !u.username && !u.password && !u.search && !u.hash && u.pathname === '/' && (u.protocol === 'https:' || (u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname)));
+}
+catch {
+    return false;
+} }, 'Use an HTTPS origin, or local HTTP, without a path or credentials.');
+export const setupSchema = z.object({ key: label, provider: label, environment: label, providerOrigin: origin, collectorOrigin: origin, method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']), path: z.string().max(256).regex(/^\/(?:[A-Za-z][A-Za-z0-9_.-]*|\{[A-Za-z][A-Za-z0-9_]*\})(?:\/(?:[A-Za-z][A-Za-z0-9_.-]*|\{[A-Za-z][A-Za-z0-9_]*\}))*\/?$/), pointers: z.string().max(1000).refine(value => { const parts = value.split(',').map(v => v.trim()).filter(Boolean); return parts.length <= 16 && new Set(parts).size === parts.length && parts.every(p => p.startsWith('/') && p.split('/').length <= 7 && p.split('/').slice(1).every(s => /^[A-Za-z_][A-Za-z0-9_]{0,31}$/.test(s) && !['__proto__', 'constructor', 'prototype'].includes(s))); }, 'Use up to 16 unique JSON field paths, separated by commas.') }).strict();
+export type Setup = z.infer<typeof setupSchema>;
+export const initialSetup: Setup = { key: '', provider: '', environment: 'development', providerOrigin: 'https://api.example.com', collectorOrigin: 'http://127.0.0.1:3000', method: 'GET', path: '/contacts', pointers: '' };
+export function observerExample(s: Setup) { const pointers = s.pointers.split(',').map(p => p.trim()).filter(Boolean); return ['import { createOutboundObserver } from "@/lib/integration-observations/outbound-fetch";', '', 'const observer = createOutboundObserver({', '  collectorOrigin: ' + JSON.stringify(s.collectorOrigin) + ',', '  providerOrigin: ' + JSON.stringify(s.providerOrigin) + ',', '  ingestionToken: process.env.SPEKTRACE_INGESTION_API_TOKEN!,', '  integration: ' + JSON.stringify({ key: s.key, provider: s.provider, environment: s.environment }) + ',', ...(pointers.length ? ['  responsePointers: ' + JSON.stringify(pointers) + ','] : ['  // Shape collection is off. Select fields to enable drift checks.']), ' });', '', '// Use your existing request URL and options.', 'const response = await observer.fetch(url, requestOptions, {', '  operation: ' + JSON.stringify({ method: s.method, path: s.path }) + ',', '});', '// Consume response normally, then flush at a lifecycle boundary.', 'await observer.flush();'].join('\n'); }
